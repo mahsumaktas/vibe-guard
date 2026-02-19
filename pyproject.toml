@@ -20,3 +20,6 @@ vibe-guard = "vibe_guard.main:app"
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
