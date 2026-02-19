@@ -67,3 +67,11 @@ def test_string_concatenation_with_create_statement():
     findings = scan_file(name)
     os.unlink(name)
     assert any(f.rule_id == 'sql_injection' for f in findings)
+
+def test_vibe_ignore_comment():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('cursor.execute(f"SELECT * FROM users WHERE name = \'{user_input}\'") # vibe-ignore\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert len(findings) == 0

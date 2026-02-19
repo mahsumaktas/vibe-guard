@@ -16,6 +16,8 @@ def scan_file(filepath: str) -> List[Finding]:
     print_count = 0
     
     for i, line in enumerate(lines, 1):
+        if "# vibe-ignore" in line:
+            continue
         stripped = line.strip()
         
         # Silent exception

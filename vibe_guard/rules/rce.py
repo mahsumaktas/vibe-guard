@@ -22,6 +22,8 @@ def scan_file(filepath: str) -> List[Finding]:
         return findings
     
     for i, line in enumerate(lines, 1):
+        if "# vibe-ignore" in line:
+            continue
         stripped = line.strip()
         if stripped.startswith('#'):
             continue

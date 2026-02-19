@@ -80,3 +80,11 @@ def test_subprocess_shell_false_is_safe():
     findings = scan_file(name)
     os.unlink(name)
     assert len(findings) == 0
+
+def test_vibe_ignore_comment():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('result = eval(user_input) # vibe-ignore\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert len(findings) == 0

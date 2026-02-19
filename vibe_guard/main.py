@@ -2,6 +2,7 @@ import click
 from pathlib import Path
 from .rules import hardcoded, rce, sqli, quality
 from .scorer import calculate_vibe_score, score_label, score_emoji
+from .reporter import generate_markdown_report
 
 try:
     from rich.console import Console
@@ -69,11 +70,9 @@ def scan(path, output, strict):
         print(f"\nVibe Score: {score}/100 — {score_label(score)}")
     
     if output:
+        report_content = generate_markdown_report(findings, path)
         with open(output, 'w') as fp:
-            fp.write(f"# vibe-guard Security Report\n\n")
-            fp.write(f"**Vibe Score: {score}/100** — {score_label(score)}\n\n")
-            for f in findings:
-                fp.write(f"- [{f.severity.upper()}] `{f.filename}:{f.line_number}` — {f.description}\n")
+            fp.write(report_content)
     
     if strict and findings:
         raise SystemExit(1)

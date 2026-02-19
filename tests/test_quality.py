@@ -74,3 +74,13 @@ def test_print_in_test_file_is_ok():
     findings = scan_file(name)
     os.unlink(name)
     assert not any(f.rule_id == 'excessive_print' for f in findings)
+
+def test_vibe_ignore_comment():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('except: # vibe-ignore\n    pass\n')
+        f.write('url = "http://localhost:8000" # vibe-ignore\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert len(findings) == 0
+

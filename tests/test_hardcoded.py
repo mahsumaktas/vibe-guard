@@ -117,3 +117,11 @@ def test_entropy_with_placeholders():
     findings = scan_file(name)
     os.unlink(name)
     assert not any(f.rule_id == 'high_entropy_string' for f in findings)
+
+def test_vibe_ignore_comment():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('password = "mySuperSecretPassword123!" # vibe-ignore\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert len(findings) == 0
