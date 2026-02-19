@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "vibe-guard"
+version = "0.0.1"
+description = "Security scanner for AI-generated code. Detects vulnerabilities and assigns a Vibe Score."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+    "pyyaml>=6",
+]
+
+[project.scripts]
+vibe-guard = "vibe_guard.main:app"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
