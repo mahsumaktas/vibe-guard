@@ -1,169 +1,80 @@
-"""Detect hardcoded credentials and API keys."""
 import re
 import math
 from dataclasses import dataclass
-from pathlib import Path
 from typing import List
-
+from pathlib import Path
 
 @dataclass
 class Finding:
-    rule_id: str         # "hardcoded_secret", "high_entropy_string", etc.
-    severity: str        # "critical" | "warning" | "info"
+    rule_id: str
+    severity: str  # "critical" | "warning" | "info"
     filename: str
     line_number: int
-    line_content: str    # relevant line (truncated)
+    line_content: str
     description: str
 
-
-# Patterns: (regex, rule_id, severity, description)
-SECRET_PATTERNS = [
-    # OpenAI API keys
-    (r'sk-[a-zA-Z0-9]{32,}', "openai_api_key", "critical",
-     "OpenAI API key detected"),
-    # OpenAI project keys
-    (r'sk-proj-[a-zA-Z0-9\-_]{40,}', "openai_project_key", "critical",
-     "OpenAI project API key detected"),
-    # GitHub tokens
-    (r'ghp_[a-zA-Z0-9]{36}', "github_token", "critical",
-     "GitHub personal access token detected"),
-    (r'gho_[a-zA-Z0-9]{36}', "github_oauth_token", "critical",
-     "GitHub OAuth token detected"),
-    (r'ghs_[a-zA-Z0-9]{36}', "github_app_token", "critical",
-     "GitHub App token detected"),
-    # Slack tokens
-    (r'xoxb-[0-9\-a-zA-Z]{50,}', "slack_bot_token", "critical",
-     "Slack bot token detected"),
-    (r'xoxa-[0-9\-a-zA-Z]{50,}', "slack_app_token", "critical",
-     "Slack app token detected"),
-    # AWS keys
-    (r'AKIA[0-9A-Z]{16}', "aws_access_key", "critical",
-     "AWS Access Key ID detected"),
-    (r'(?i)aws_secret_access_key\s*=\s*["\'][^"\']{20,}["\']', "aws_secret_key", "critical",
-     "AWS Secret Access Key detected"),
-    # Google API keys
-    (r'AIza[0-9A-Za-z\-_]{35}', "google_api_key", "critical",
-     "Google API key detected"),
-    # Stripe keys
-    (r'sk_live_[0-9a-zA-Z]{24,}', "stripe_live_key", "critical",
-     "Stripe live secret key detected"),
-    (r'pk_live_[0-9a-zA-Z]{24,}', "stripe_live_pk", "warning",
-     "Stripe live publishable key detected"),
-    # Generic patterns - password/secret assignments
-    (r'(?i)(?:password|passwd|pwd)\s*=\s*["\'][^"\']{6,}["\']', "hardcoded_password", "critical",
-     "Hardcoded password detected"),
-    (r'(?i)(?:secret|api_key|apikey|api_secret)\s*=\s*["\'][^"\']{8,}["\']', "hardcoded_secret", "critical",
-     "Hardcoded secret/API key detected"),
-    (r'(?i)(?:token|auth_token|access_token)\s*=\s*["\'][a-zA-Z0-9\-_\.]{20,}["\']', "hardcoded_token", "warning",
-     "Hardcoded token detected"),
-    # Private key headers
-    (r'-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----', "private_key", "critical",
-     "Private key material detected"),
+CREDENTIAL_PATTERNS = [
+    (r'sk-[a-zA-Z0-9]{32,}', "critical", "OpenAI API key"),
+    (r'ghp_[a-zA-Z0-9]{36}', "critical", "GitHub Personal Access Token"),
+    (r'xoxb-[a-zA-Z0-9\-]{50,}', "critical", "Slack Bot Token"),
+    (r'(?i)aws_secret_access_key\s*=\s*["\']?([a-zA-Z0-9/+]{40})["\']?', "critical", "AWS Secret Access Key"),
+    (r'(?i)(api[_-]?key|apikey)\s*=\s*["\']([a-zA-Z0-9_\-]{20,})["\']', "critical", "Hardcoded API key"),
+    (r'(?i)(password|passwd|pwd)\s*=\s*["\']([^"\']{8,})["\']', "critical", "Hardcoded password"),
+    (r'(?i)(secret|token)\s*=\s*["\']([a-zA-Z0-9_\-]{16,})["\']', "critical", "Hardcoded secret/token"),
 ]
-
-# Variables that suggest env var usage (false positive avoidance)
-ENV_VAR_PATTERNS = [
-    r'os\.environ',
-    r'os\.getenv',
-    r'process\.env',
-    r'getenv\(',
-    r'environ\.get\(',
-    r'config\[',
-    r'\$\{',
-    r'\$[A-Z_]+',
-]
-
 
 def calculate_entropy(s: str) -> float:
-    """Shannon entropy of a string."""
     if not s:
         return 0.0
     freq = {}
-    for ch in s:
-        freq[ch] = freq.get(ch, 0) + 1
-    length = len(s)
-    entropy = 0.0
-    for count in freq.values():
-        p = count / length
-        if p > 0:
-            entropy -= p * math.log2(p)
-    return entropy
+    for c in s:
+        freq[c] = freq.get(c, 0) + 1
+    return -sum((f/len(s)) * math.log2(f/len(s)) for f in freq.values())
 
-
-def _is_env_var_reference(line: str) -> bool:
-    """Return True if the line uses env var lookup (not hardcoded)."""
-    for pattern in ENV_VAR_PATTERNS:
-        if re.search(pattern, line):
-            return True
-    return False
-
-
-def _check_high_entropy(line: str, line_no: int, filename: str) -> List[Finding]:
-    """Detect high-entropy strings that may be secrets."""
+def scan_file(filepath: str) -> List[Finding]:
     findings = []
-    # Find quoted strings of 20+ chars
-    for match in re.finditer(r'["\']([A-Za-z0-9+/=\-_\.]{20,})["\']', line):
-        candidate = match.group(1)
-        entropy = calculate_entropy(candidate)
-        if entropy > 4.5:
-            findings.append(Finding(
-                rule_id="high_entropy_string",
-                severity="warning",
-                filename=filename,
-                line_number=line_no,
-                line_content=line.strip()[:120],
-                description=f"High entropy string detected (entropy={entropy:.2f}): possible secret",
-            ))
-            break  # one finding per line is enough
-    return findings
-
-
-def scan_file(filepath) -> List[Finding]:
-    """Scan a file for hardcoded credentials."""
-    filepath = Path(filepath)
-    findings: List[Finding] = []
-
-    # Skip binary and non-text files
-    skip_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg',
-                       '.woff', '.woff2', '.ttf', '.eot', '.pdf', '.zip',
-                       '.gz', '.tar', '.lock', '.bin', '.exe'}
-    if filepath.suffix.lower() in skip_extensions:
-        return []
-
     try:
-        content = filepath.read_text(encoding='utf-8', errors='ignore')
-    except Exception:
-        return []
-
-    filename = str(filepath)
-    lines = content.splitlines()
-
-    for line_no, line in enumerate(lines, 1):
-        # Skip comments (Python, JS, shell)
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+    except (IOError, OSError):
+        return findings
+    
+    for i, line in enumerate(lines, 1):
         stripped = line.strip()
-        if stripped.startswith('#') or stripped.startswith('//') or stripped.startswith('*'):
+        if stripped.startswith('#') or stripped.startswith('//'):
+            continue
+        if any(w in line.lower() for w in ['example', 'test', 'placeholder', 'your_']):
             continue
 
-        # Skip env var references (not hardcoded)
-        if _is_env_var_reference(line):
-            continue
-
-        # Check known secret patterns
-        for pattern, rule_id, severity, description in SECRET_PATTERNS:
+        for pattern, severity, desc in CREDENTIAL_PATTERNS:
             if re.search(pattern, line):
                 findings.append(Finding(
-                    rule_id=rule_id,
+                    rule_id="hardcoded_secret",
                     severity=severity,
-                    filename=filename,
-                    line_number=line_no,
-                    line_content=line.strip()[:120],
-                    description=description,
+                    filename=filepath,
+                    line_number=i,
+                    line_content=stripped[:100],
+                    description=desc
                 ))
-                break  # one finding per line per category
+                break
+        # High entropy string detection
+        tokens = re.findall(r'["\']([a-zA-Z0-9+/=_\-]{20,})["\']', line)
+        for token in tokens:
+            if calculate_entropy(token) > 4.5:
+                findings.append(Finding(
+                    rule_id="high_entropy_string",
+                    severity="warning",
+                    filename=filepath,
+                    line_number=i,
+                    line_content=stripped[:100],
+                    description=f"High entropy string detected (entropy={calculate_entropy(token):.2f})"
+                ))
+    return findings
 
-        # Check high entropy strings
-        if not any(f.line_number == line_no and f.rule_id != "high_entropy_string"
-                   for f in findings):
-            findings.extend(_check_high_entropy(line, line_no, filename))
-
+def scan_directory(path: str) -> List[Finding]:
+    findings = []
+    extensions = {'.py', '.js', '.ts', '.env', '.yml', '.yaml', '.json', '.sh'}
+    for p in Path(path).rglob('*'):
+        if p.is_file() and p.suffix in extensions and '.git' not in str(p):
+            findings.extend(scan_file(str(p)))
     return findings

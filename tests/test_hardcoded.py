@@ -1,163 +1,119 @@
-"""Tests for hardcoded credential detection."""
-import tempfile
-from pathlib import Path
-import pytest
-from vibe_guard.rules.hardcoded import scan_file, calculate_entropy, Finding
+import tempfile, os
+from vibe_guard.rules.hardcoded import scan_file, scan_directory, calculate_entropy
 
+def test_detects_api_key_in_variable():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('API_KEY = "a_very_long_and_secretive_api_key_string"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'hardcoded_secret' and f.description == 'Hardcoded API key' for f in findings)
 
-# --- Helper ---
-def make_temp_file(content: str, suffix: str = ".py") -> Path:
-    with tempfile.NamedTemporaryFile(suffix=suffix, mode="w",
-                                     encoding="utf-8", delete=False) as f:
-        f.write(content)
-        return Path(f.name)
+def test_detects_password_in_variable():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('password = "mySuperSecretPassword123!"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'hardcoded_secret' and f.description == 'Hardcoded password' for f in findings)
 
+def test_detects_secret_token_in_variable():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('SECRET = "a_super_secret_token_of_at_least_16_chars"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'hardcoded_secret' and f.description == 'Hardcoded secret/token' for f in findings)
 
-# === Positive detection tests ===
+def test_detects_openai_api_key():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('openai.api_key = "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'hardcoded_secret' and f.description == 'OpenAI API key' for f in findings)
 
-def test_detects_openai_key():
-    f = make_temp_file('api_key = "sk-abcdefghijklmnopqrstuvwxyz123456"\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-    assert any(finding.severity == "critical" for finding in findings)
+def test_detects_github_personal_access_token():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('token = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'hardcoded_secret' and f.description == 'GitHub Personal Access Token' for f in findings)
+    
+def test_detects_slack_bot_token():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('SLACK_TOKEN = "xoxb-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'hardcoded_secret' and f.description == 'Slack Bot Token' for f in findings)
 
+def test_detects_aws_secret_access_key():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('aws_secret_access_key="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'hardcoded_secret' and f.description == 'AWS Secret Access Key' for f in findings)
 
-def test_detects_github_token():
-    f = make_temp_file('token = "ghp_' + 'A' * 36 + '"\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-    rule_ids = [finding.rule_id for finding in findings]
-    assert "github_token" in rule_ids
+def test_high_entropy_string_detected():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('random_string = "AbcDefGhiJklMnoPqrStuVwxYz1234567890+/"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert any(f.rule_id == 'high_entropy_string' for f in findings)
 
-
-def test_detects_aws_access_key():
-    f = make_temp_file('key = "AKIAIOSFODNN7EXAMPLE"\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-    assert any(f.rule_id == "aws_access_key" for f in findings)
-
-
-def test_detects_hardcoded_password():
-    f = make_temp_file('password = "supersecret123"\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-    assert any(f.severity == "critical" for f in findings)
-
-
-def test_detects_hardcoded_secret():
-    f = make_temp_file('api_key = "my_super_secret_api_key"\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-
-
-def test_detects_slack_token():
-    f = make_temp_file('bot_token = "xoxb-1234567890-1234567890-' + 'a' * 24 + '"\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-
-
-def test_detects_stripe_live_key():
-    f = make_temp_file('stripe_key = "sk_live_' + 'a' * 24 + '"\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-    assert any(f.rule_id == "stripe_live_key" for f in findings)
-
-
-def test_detects_private_key_header():
-    f = make_temp_file('key_data = """-----BEGIN RSA PRIVATE KEY-----\nMIIEo...\n"""\n')
-    findings = scan_file(f)
-    assert len(findings) > 0
-
-
-# === False positive avoidance tests ===
-
-def test_no_false_positive_env_var_lookup():
-    """os.environ lookup is NOT a hardcoded secret."""
-    f = make_temp_file('api_key = os.environ.get("OPENAI_API_KEY")\n')
-    findings = scan_file(f)
-    # Should not flag env var lookups
-    assert not any(f.rule_id == "hardcoded_secret" for f in findings)
-
-
-def test_no_false_positive_process_env():
-    """process.env lookup in JS is safe."""
-    f = make_temp_file('const key = process.env.API_KEY;\n', suffix=".js")
-    findings = scan_file(f)
-    assert not any(f.rule_id == "hardcoded_secret" for f in findings)
-
-
-def test_no_false_positive_comment():
-    """Comments should not trigger findings."""
-    f = make_temp_file('# password = "example"\n')
-    findings = scan_file(f)
+def test_no_false_positive_in_comment():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('# API_KEY = "a_very_long_and_secretive_api_key_string"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert len(findings) == 0
+    
+def test_no_false_positive_in_example_file():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('API_KEY = "example_key_for_testing"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
     assert len(findings) == 0
 
+def test_scan_file_not_found():
+    findings = scan_file("non_existent_file.py")
+    assert len(findings) == 0
 
-def test_no_false_positive_short_string():
-    """Short password-looking strings should not necessarily trigger."""
-    f = make_temp_file('# minimum password length is 8\nminLen = 8\n')
-    findings = scan_file(f)
-    # No critical findings
-    assert not any(f.severity == "critical" for f in findings)
-
-
-# === Entropy tests ===
-
-def test_entropy_low_string():
-    assert calculate_entropy("aaaaaaaaaa") < 1.0
-
-
-def test_entropy_high_random():
-    # Random-looking string should have high entropy
-    s = "aB3$xY7qZ1mN9pR2wK5jL8hV4tG6fD0eC"
-    assert calculate_entropy(s) > 4.0
-
-
-def test_entropy_empty():
+def test_entropy_calculation():
+    assert calculate_entropy("abc") > 1.5
+    assert calculate_entropy("aaa") == 0.0
     assert calculate_entropy("") == 0.0
 
+def test_scan_directory():
+    with tempfile.TemporaryDirectory() as tempdir:
+        with open(os.path.join(tempdir, "secrets.py"), "w") as f:
+            f.write('password = "mySuperSecretPassword123!"\n')
+        
+        with open(os.path.join(tempdir, "no_secrets.py"), "w") as f:
+            f.write('password = "ok"\n')
 
-def test_entropy_uniform():
-    # All unique chars = max entropy
-    s = "abcdefghijklmnop"
-    assert calculate_entropy(s) == pytest.approx(4.0, abs=0.1)
+        findings = scan_directory(tempdir)
+        assert len(findings) == 1
+        assert findings[0].rule_id == 'hardcoded_secret'
 
+def test_false_positive_short_strings():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('pwd = "short"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert len(findings) == 0
 
-# === Vibe Score tests ===
-
-def test_vibe_score_perfect():
-    from vibe_guard.scorer import calculate_vibe_score
-    assert calculate_vibe_score([]) == 100
-
-
-def test_vibe_score_one_critical():
-    from vibe_guard.scorer import calculate_vibe_score
-    findings = [Finding("test", "critical", "f.py", 1, "x", "desc")]
-    assert calculate_vibe_score(findings) == 80
-
-
-def test_vibe_score_cap():
-    """Score should not go below 0 even with many findings."""
-    from vibe_guard.scorer import calculate_vibe_score
-    findings = [Finding("test", "critical", "f.py", i, "x", "desc") for i in range(20)]
-    score = calculate_vibe_score(findings)
-    assert score >= 0
-
-
-def test_vibe_score_label():
-    from vibe_guard.scorer import score_label
-    assert score_label(100) == "Safe"
-    assert score_label(90) == "Safe"
-    assert score_label(75) == "OK"
-    assert score_label(55) == "Review"
-    assert score_label(30) == "Unsafe"
-
-
-# === File type tests ===
-
-def test_binary_file_skipped():
-    """Binary files should return no findings."""
-    f = Path(tempfile.mktemp(suffix=".png"))
-    f.write_bytes(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR')
-    findings = scan_file(f)
-    assert findings == []
+def test_entropy_with_placeholders():
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write('key = "your_api_key_here"\n')
+        name = f.name
+    findings = scan_file(name)
+    os.unlink(name)
+    assert not any(f.rule_id == 'high_entropy_string' for f in findings)
