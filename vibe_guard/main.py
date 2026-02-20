@@ -37,8 +37,16 @@ def main():
 @click.option('--strict', is_flag=True, help='Exit code 1 if issues found')
 def scan(path, output, strict):
     """Scan directory for security issues."""
+    if not os.path.exists(path):
+        if RICH:
+            console.print(f"[bold red]Error:[/bold red] Path '{path}' does not exist.")
+        else:
+            print(f"Error: Path '{path}' does not exist.")
+        raise SystemExit(1)
+
     findings = collect_findings(path)
     score = calculate_vibe_score(findings)
+
     
     if RICH:
         console.print(f"\n[bold]vibe-guard[/bold] v0.0.6\n")

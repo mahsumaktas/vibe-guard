@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from typing import List
 from ..models import Finding
-from .common import should_ignore
+from .common import should_ignore, is_excluded_dir
 
 # Detect patterns where sensitive names are exposed via frontend public prefixes
 FRONTEND_PREFIXES = r'(NEXT_PUBLIC_|VITE_|REACT_APP_|EXPO_PUBLIC_)'
@@ -40,6 +40,6 @@ def scan_directory(path: str) -> List[Finding]:
     findings = []
     extensions = {'.py', '.js', '.ts', '.jsx', '.tsx', '.env', '.yml', '.yaml', '.json'}
     for p in Path(path).rglob('*'):
-        if p.is_file() and p.suffix in extensions and '.git' not in str(p) and 'node_modules' not in str(p):
+        if p.is_file() and p.suffix in extensions and not is_excluded_dir(str(p)):
             findings.extend(scan_file(str(p)))
     return findings

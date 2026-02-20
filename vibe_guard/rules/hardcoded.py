@@ -3,7 +3,7 @@ import math
 from typing import List
 from pathlib import Path
 from ..models import Finding
-from .common import should_ignore
+from .common import should_ignore, is_excluded_dir
 
 CREDENTIAL_PATTERNS = [
     (r'sk-[a-zA-Z0-9]{32,}', "critical", "OpenAI API key"),
@@ -81,6 +81,6 @@ def scan_directory(path: str) -> List[Finding]:
     findings = []
     extensions = {'.py', '.js', '.ts', '.env', '.yml', '.yaml', '.json', '.sh'}
     for p in Path(path).rglob('*'):
-        if p.is_file() and p.suffix in extensions and '.git' not in str(p):
+        if p.is_file() and p.suffix in extensions and not is_excluded_dir(str(p)):
             findings.extend(scan_file(str(p)))
     return findings

@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from typing import List
 from ..models import Finding
-from .common import should_ignore
+from .common import should_ignore, is_excluded_dir
 
 def scan_file(filepath: str) -> List[Finding]:
     findings = []
@@ -38,8 +38,8 @@ def scan_file(filepath: str) -> List[Finding]:
             if not should_ignore(line, "high_todo_ratio"):
                 todo_count += 1
         
-        # print() in non-test files
-        if re.match(r'\s*print\s*\(', line) and 'test' not in filepath.lower():
+        # print() or console.log() in non-test files
+        if (re.match(r'\s*print\s*\(', line) or re.match(r'\s*console\.log\s*\(', line)) and 'test' not in filepath.lower():
             if not should_ignore(line, "excessive_print"):
                 print_count += 1
         
@@ -72,14 +72,15 @@ def scan_file(filepath: str) -> List[Finding]:
             filename=filepath,
             line_number=1,
             line_content="",
-            description=f"Excessive print() usage: {print_count} calls - use logging"
+            description=f"Excessive print/log usage: {print_count} calls - use proper logging"
         ))
     
     return findings
 
 def scan_directory(path: str) -> List[Finding]:
     findings = []
-    for p in Path(path).rglob('*.py'):
-        if '.git' not in str(p):
+    extensions = {'.py', '.js', '.ts', '.jsx', '.tsx'}
+    for p in Path(path).rglob('*'):
+        if p.is_file() and p.suffix in extensions and not is_excluded_dir(str(p)):
             findings.extend(scan_file(str(p)))
     return findings

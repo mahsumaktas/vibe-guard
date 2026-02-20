@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from typing import List
 from ..models import Finding
-from .common import should_ignore
+from .common import should_ignore, is_excluded_dir
 
 RCE_PATTERNS = [
     (r'\beval\s*\(', "critical", "eval() usage - remote code execution risk"),
@@ -12,6 +12,7 @@ RCE_PATTERNS = [
     (r'__import__\s*\(', "warning", "Dynamic import - potential code injection"),
     (r'pickle\.loads?\s*\(', "warning", "pickle.load() - arbitrary code execution risk"),
     (r'yaml\.load\s*\([^,)]*\)', "warning", "yaml.load() without Loader - use yaml.safe_load()"),
+    (r'(?i)child_process\s*\.\s*(?:exec|execSync)\s*\(', "critical", "Node.js child_process.exec() - shell injection risk"),
 ]
 
 def scan_file(filepath: str) -> List[Finding]:
@@ -24,7 +25,7 @@ def scan_file(filepath: str) -> List[Finding]:
     
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
-        if stripped.startswith('#'):
+        if stripped.startswith('#') or stripped.startswith('//'):
             continue
         for pattern, severity, desc in RCE_PATTERNS:
             if re.search(pattern, line):
@@ -43,7 +44,8 @@ def scan_file(filepath: str) -> List[Finding]:
 
 def scan_directory(path: str) -> List[Finding]:
     findings = []
-    for p in Path(path).rglob('*.py'):
-        if '.git' not in str(p):
+    extensions = {'.py', '.js', '.ts', '.jsx', '.tsx'}
+    for p in Path(path).rglob('*'):
+        if p.is_file() and p.suffix in extensions and not is_excluded_dir(str(p)):
             findings.extend(scan_file(str(p)))
     return findings

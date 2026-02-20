@@ -1,12 +1,32 @@
 [project]
 name = "vibe-guard"
-version = "0.0.6"
+version = "0.1.5"
 description = "Security scanner for AI-generated (vibe-coded) code"
+readme = "README.md"
+authors = [{ name = "mahsumaktas" }]
+license = { text = "MIT" }
+keywords = ["security", "ai", "vibe-coding", "scanner", "sast", "cursor", "copilot"]
 requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
     "click>=8.0.0",
     "rich>=13.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/mahsumaktas/vibe-guard"
+Repository = "https://github.com/mahsumaktas/vibe-guard"
+Issues = "https://github.com/mahsumaktas/vibe-guard/issues"
+
 
 [project.optional-dependencies]
 dev = [
