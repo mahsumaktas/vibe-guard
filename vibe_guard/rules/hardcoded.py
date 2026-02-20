@@ -13,10 +13,16 @@ CREDENTIAL_PATTERNS = [
     (r'(?i)(api[_-]?key|apikey)\s*=\s*["\']([a-zA-Z0-9_\-]{20,})["\']', "critical", "Hardcoded API key"),
     (r'(?i)(password|passwd|pwd)\s*=\s*["\']([^"\']{8,})["\']', "critical", "Hardcoded password"),
     (r'(?i)(secret|token)\s*=\s*["\']([a-zA-Z0-9_\-]{16,})["\']', "critical", "Hardcoded secret/token"),
-    (r'([a-zA-Z0-9]{24}\.[a-zA-Z0-9]{6}\.[a-zA-Z0-9]{27})', "critical", "Discord Bot Token"), # Add discord token
+    (r'([a-zA-Z0-9]{24}\.[a-zA-Z0-9]{6}\.[a-zA-Z0-9]{27})', "critical", "Discord Bot Token"),
     (r'(?i)vercel_.*_token\s*=\s*["\']([a-zA-Z0-9_\-]{24,})["\']', "critical", "Vercel Access Token"),
     (r'(?i)railway_token\s*=\s*["\']([a-zA-Z0-9_\-]{30,})["\']', "critical", "Railway Access Token"),
     (r'(?i)cloudflare_api_token\s*=\s*["\']([a-zA-Z0-9_\-]{40,})["\']', "critical", "Cloudflare API Token"),
+    (r'AIza[0-9A-Za-z\-_]{35}', "critical", "Google Cloud (GCP) API Key"),
+    (r'ya29\.[0-9a-zA-Z\-_]+', "critical", "Google Cloud (GCP) OAuth Token"),
+    (r'(sk_live|rk_live)_[a-zA-Z0-9]{24,}', "critical", "Stripe Secret Key"),
+    (r'SG\.[a-zA-Z0-9_\-]{22}\.[a-zA-Z0-9_\-]{43}', "critical", "SendGrid API Key"),
+    (r'SK[0-9a-fA-F]{32}', "critical", "Twilio API Key"),
+    (r'mongodb(?:\+srv)?:\/\/[^:]+:[^@]+@[a-zA-Z0-9.-]+', "critical", "MongoDB URI with hardcoded credentials"),
 ]
 
 def calculate_entropy(s: str) -> float:

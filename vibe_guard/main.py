@@ -75,7 +75,7 @@ def scan(path, output, strict):
     
     if output:
         report_content = generate_markdown_report(findings, path)
-        with open(output, 'w') as fp:
+        with open(output, 'w', encoding='utf-8') as fp:
             fp.write(report_content)
     
     if strict and findings:
@@ -84,7 +84,7 @@ def scan(path, output, strict):
 @main.command()
 def init():
     """Initialize vibe-guard rules for AI assistants (Cursor, Windsurf)."""
-    rules_content = \"\"\"# Vibe-Guard Security Rules
+    rules_content = """# Vibe-Guard Security Rules
 
 You are an AI programming assistant. Security is critical in this project.
 After writing or significantly modifying code, you MUST run the security scanner in the background:
@@ -95,7 +95,7 @@ If the Vibe Score is below 80, or if you find any 'Critical' issues:
 2. Read the Vibe-Guard report.
 3. Automatically fix the issues according to the provided hints.
 4. Rescan to confirm the code is safe before finishing your task.
-\"\"\"
+"""
     
     files_created = 0
     for filename in ['.cursorrules', '.windsurfrules']:

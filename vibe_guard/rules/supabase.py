@@ -6,7 +6,7 @@ from .common import should_ignore
 
 SUPABASE_PATTERNS = [
     # Look for usage of service_role key in frontend/client context
-    (r'(?i)supabase_service_role(?:_key)?\s*=\s*["']([^"']+)["']', "critical", "Supabase service_role key exposed. Bypasses all RLS."),
+    (r'(?i)supabase_service_role(?:_key)?\s*=\s*["\']([^"\']+)["\']', "critical", "Supabase service_role key exposed. Bypasses all RLS."),
     # Look for permissive RLS in SQL
     (r'(?i)create\s+policy.*using\s*\(\s*true\s*\)', "warning", "Overly permissive Supabase RLS policy (USING (true))"),
     # Missing WITH CHECK in insert/update policies

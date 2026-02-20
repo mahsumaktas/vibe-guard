@@ -18,18 +18,30 @@ FIX_HINTS = {
     "supabase_misconfig": "Keep service_role safe on backend. Enforce RLS with auth.uid() and WITH CHECK clauses.",
 }
 
+def generate_progress_bar(score: int) -> str:
+    total_blocks = 10
+    filled_blocks = round(score / 10)
+    empty_blocks = total_blocks - filled_blocks
+    
+    color = "🟩" if score >= 90 else "🟨" if score >= 70 else "🟧" if score >= 50 else "🟥"
+    return (color * filled_blocks) + ("⬜" * empty_blocks)
+
 def generate_markdown_report(findings: List[Finding], scan_path: str) -> str:
     score = calculate_vibe_score(findings)
     critical = [f for f in findings if f.severity == "critical"]
     warnings = [f for f in findings if f.severity == "warning"]
     infos = [f for f in findings if f.severity == "info"]
     
+    progress_bar = generate_progress_bar(score)
+    
     lines = [
-        f"# vibe-guard Security Report",
+        f"# 🛡️ Vibe-Guard Security Report",
         f"",
         f"**Scan path:** `{scan_path}`  ",
         f"**Vibe Score:** {score_emoji(score)} **{score}/100** — {score_label(score)}",
+        f"**Health:** {progress_bar}",
         f"",
+        f"### 📊 Summary",
         f"| Severity | Count |",
         f"|----------|-------|",
         f"| 🔴 Critical | {len(critical)} |",
@@ -45,21 +57,24 @@ def generate_markdown_report(findings: List[Finding], scan_path: str) -> str:
         by_file[f.filename].append(f)
     
     if findings:
-        lines.append("## Findings")
+        lines.append("## 🔍 Detailed Findings")
         lines.append("")
         for fname, file_findings in sorted(by_file.items()):
-            lines.append(f"### `{fname}`")
+            lines.append(f"### 📄 `{fname}`")
             lines.append("")
             for f in sorted(file_findings, key=lambda x: x.line_number):
                 icon = "🔴" if f.severity == "critical" else "🟡" if f.severity == "warning" else "🔵"
-                lines.append(f"- {icon} **Line {f.line_number}** — {f.description}")
+                lines.append(f"#### {icon} Line {f.line_number}: {f.description}")
+                lines.append(f"```python\n{f.line_content}\n```")
                 hint = FIX_HINTS.get(f.rule_id)
                 if hint:
-                    lines.append(f"  > 💡 Fix: {hint}")
+                    lines.append(f"> 💡 **Fix:** {hint}")
+                lines.append("")
+            lines.append("---")
             lines.append("")
     else:
-        lines.append("## ✅ No issues found!")
+        lines.append("## ✅ All Clear!")
+        lines.append("No security issues were found. Excellent vibe coding!")
         lines.append("")
     
-    return "
-".join(lines)
+    return "\n".join(lines)
