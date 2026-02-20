@@ -6,9 +6,10 @@ jobs:
   vibe-guard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout @v4
-      - uses: actions/setup-python @v5
+      - uses: actions/checkout@v4
+      - name: Run Vibe-Guard Action
+        uses: ./
         with:
-          python-version: '3.11'
-      - run: pip install vibe-guard
-      - run: vibe-guard scan . --strict
+          path: vibe_guard
+          fail-on: critical
+
