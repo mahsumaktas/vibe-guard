@@ -1,6 +1,6 @@
 """Generate markdown reports from findings."""
 from typing import List
-from .rules.hardcoded import Finding
+from .models import Finding
 from .scorer import calculate_vibe_score, score_emoji, score_label
 from collections import defaultdict
 
@@ -13,6 +13,9 @@ FIX_HINTS = {
     "hardcoded_localhost": "Use environment variable: os.getenv('API_URL', 'http://localhost:8000')",
     "high_todo_ratio": "Address TODOs or move them to GitHub Issues",
     "excessive_print": "Replace print() with logging module",
+    "frontend_secret_leak": "Remove the public prefix (e.g. NEXT_PUBLIC_) so it's not bundled in the client code",
+    "insecure_default": "Fix the insecure shortcut (e.g. restrict CORS, remove verify=False, don't log process.env)",
+    "supabase_misconfig": "Keep service_role safe on backend. Enforce RLS with auth.uid() and WITH CHECK clauses.",
 }
 
 def generate_markdown_report(findings: List[Finding], scan_path: str) -> str:

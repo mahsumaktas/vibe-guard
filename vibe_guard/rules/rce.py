@@ -1,7 +1,8 @@
 import re
 from pathlib import Path
 from typing import List
-from .hardcoded import Finding
+from ..models import Finding
+from .common import should_ignore
 
 RCE_PATTERNS = [
     (r'\beval\s*\(', "critical", "eval() usage - remote code execution risk"),
@@ -22,13 +23,13 @@ def scan_file(filepath: str) -> List[Finding]:
         return findings
     
     for i, line in enumerate(lines, 1):
-        if "# vibe-ignore" in line:
-            continue
         stripped = line.strip()
         if stripped.startswith('#'):
             continue
         for pattern, severity, desc in RCE_PATTERNS:
             if re.search(pattern, line):
+                if should_ignore(line, "rce_risk"):
+                    continue
                 findings.append(Finding(
                     rule_id="rce_risk",
                     severity=severity,

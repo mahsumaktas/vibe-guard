@@ -1,1 +1,1 @@
-from . import hardcoded, rce, sqli, quality
+from . import hardcoded, rce, sqli, quality, frontend_secrets, insecure_defaults, supabase

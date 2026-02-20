@@ -1,6 +1,7 @@
 import click
+import os
 from pathlib import Path
-from .rules import hardcoded, rce, sqli, quality
+from .rules import hardcoded, rce, sqli, quality, frontend_secrets, insecure_defaults, supabase
 from .scorer import calculate_vibe_score, score_label, score_emoji
 from .reporter import generate_markdown_report
 
@@ -20,6 +21,9 @@ def collect_findings(path: str):
     findings.extend(rce.scan_directory(path))
     findings.extend(sqli.scan_directory(path))
     findings.extend(quality.scan_directory(path))
+    findings.extend(frontend_secrets.scan_directory(path))
+    findings.extend(insecure_defaults.scan_directory(path))
+    findings.extend(supabase.scan_directory(path))
     return findings
 
 @click.group()
@@ -76,6 +80,44 @@ def scan(path, output, strict):
     
     if strict and findings:
         raise SystemExit(1)
+
+@main.command()
+def init():
+    """Initialize vibe-guard rules for AI assistants (Cursor, Windsurf)."""
+    rules_content = \"\"\"# Vibe-Guard Security Rules
+
+You are an AI programming assistant. Security is critical in this project.
+After writing or significantly modifying code, you MUST run the security scanner in the background:
+`vibe-guard scan .`
+
+If the Vibe Score is below 80, or if you find any 'Critical' issues:
+1. DO NOT present the insecure code to the user.
+2. Read the Vibe-Guard report.
+3. Automatically fix the issues according to the provided hints.
+4. Rescan to confirm the code is safe before finishing your task.
+\"\"\"
+    
+    files_created = 0
+    for filename in ['.cursorrules', '.windsurfrules']:
+        path = Path(filename)
+        if not path.exists():
+            path.write_text(rules_content)
+            if RICH:
+                console.print(f"[green]Created {filename}[/green]")
+            else:
+                print(f"Created {filename}")
+            files_created += 1
+        else:
+            if RICH:
+                console.print(f"[yellow]{filename} already exists. Skipping.[/yellow]")
+            else:
+                print(f"{filename} already exists. Skipping.")
+    
+    if files_created > 0:
+        if RICH:
+            console.print("\n[bold green]Successfully initialized vibe-guard AI rules![/bold green]")
+        else:
+            print("\nSuccessfully initialized vibe-guard AI rules!")
 
 @main.command()
 @click.argument('path', default='.')

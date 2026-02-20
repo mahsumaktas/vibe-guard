@@ -1,17 +1,9 @@
 import re
 import math
-from dataclasses import dataclass
 from typing import List
 from pathlib import Path
-
-@dataclass
-class Finding:
-    rule_id: str
-    severity: str  # "critical" | "warning" | "info"
-    filename: str
-    line_number: int
-    line_content: str
-    description: str
+from ..models import Finding
+from .common import should_ignore
 
 CREDENTIAL_PATTERNS = [
     (r'sk-[a-zA-Z0-9]{32,}', "critical", "OpenAI API key"),
@@ -21,6 +13,10 @@ CREDENTIAL_PATTERNS = [
     (r'(?i)(api[_-]?key|apikey)\s*=\s*["\']([a-zA-Z0-9_\-]{20,})["\']', "critical", "Hardcoded API key"),
     (r'(?i)(password|passwd|pwd)\s*=\s*["\']([^"\']{8,})["\']', "critical", "Hardcoded password"),
     (r'(?i)(secret|token)\s*=\s*["\']([a-zA-Z0-9_\-]{16,})["\']', "critical", "Hardcoded secret/token"),
+    (r'([a-zA-Z0-9]{24}\.[a-zA-Z0-9]{6}\.[a-zA-Z0-9]{27})', "critical", "Discord Bot Token"), # Add discord token
+    (r'(?i)vercel_.*_token\s*=\s*["\']([a-zA-Z0-9_\-]{24,})["\']', "critical", "Vercel Access Token"),
+    (r'(?i)railway_token\s*=\s*["\']([a-zA-Z0-9_\-]{30,})["\']', "critical", "Railway Access Token"),
+    (r'(?i)cloudflare_api_token\s*=\s*["\']([a-zA-Z0-9_\-]{40,})["\']', "critical", "Cloudflare API Token"),
 ]
 
 def calculate_entropy(s: str) -> float:
@@ -40,8 +36,6 @@ def scan_file(filepath: str) -> List[Finding]:
         return findings
     
     for i, line in enumerate(lines, 1):
-        if "# vibe-ignore" in line:
-            continue
         stripped = line.strip()
         if stripped.startswith('#') or stripped.startswith('//'):
             continue
@@ -50,6 +44,8 @@ def scan_file(filepath: str) -> List[Finding]:
 
         for pattern, severity, desc in CREDENTIAL_PATTERNS:
             if re.search(pattern, line):
+                if should_ignore(line, "hardcoded_secret"):
+                    continue
                 findings.append(Finding(
                     rule_id="hardcoded_secret",
                     severity=severity,
@@ -63,6 +59,8 @@ def scan_file(filepath: str) -> List[Finding]:
         tokens = re.findall(r'["\']([a-zA-Z0-9+/=_\-]{20,})["\']', line)
         for token in tokens:
             if calculate_entropy(token) > 4.5:
+                if should_ignore(line, "high_entropy_string"):
+                    continue
                 findings.append(Finding(
                     rule_id="high_entropy_string",
                     severity="warning",

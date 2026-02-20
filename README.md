@@ -16,7 +16,7 @@ You vibe-coded it. But is it safe?
 - 🖥️ **RCE risk** — catches `eval()`, `exec()`, `os.system()`, `subprocess.shell=True`
 - 📊 **Vibe Score 0-100** — weighted severity formula, shareable badge
 - 📝 **Markdown reports** — paste-ready for PRs and issue comments
-- 🔕 **Inline ignore** — `# vibe-ignore` to suppress false positives
+- 🔕 **Inline ignore** — `# vibe-ignore` to suppress false positives (supports specific rules: `# vibe-ignore: rce_risk`)
 - 🤖 **GitHub Action** — auto-comment on PRs
 
 ## Install
@@ -31,6 +31,7 @@ pip install vibe-guard
 vibe-guard scan ./src
 vibe-guard scan . --output report.md
 vibe-guard score              # just the Vibe Score
+vibe-guard init               # generates .cursorrules / .windsurfrules for AI agents
 ```
 
 ## Example Output
@@ -55,23 +56,28 @@ Run `vibe-guard scan --output report.md` to generate a full report.
 ## GitHub Action
 
 ```yaml
-- uses: mahsumaktas/vibe-guard@v0.1.0
+- uses: mahsumaktas/vibe-guard@main
   with:
     path: ./src
     fail-on: critical
+    comment-pr: 'true'
 ```
 
 ## Roadmap
 
 - [x] v0.0.1 — Project skeleton
-- [ ] v0.0.2 — Hardcoded credentials scanner
-- [ ] v0.0.3 — RCE risk detection
-- [ ] v0.0.4 — SQL injection detection
-- [ ] v0.0.5 — Vibe Score algorithm
-- [ ] v0.0.6 — Inline ignore comments
-- [ ] v0.0.7 — Markdown report output
-- [ ] v0.0.8 — GitHub Action + PR comment integration
+- [x] v0.0.2 — Hardcoded credentials scanner
+- [x] v0.0.3 — RCE risk detection
+- [x] v0.0.4 — SQL injection detection
+- [x] v0.0.5 — Vibe Score algorithm
+- [x] v0.0.6 — Inline ignore comments
+- [x] v0.0.7 — Markdown report output
+- [x] v0.0.8 — GitHub Action + PR comment integration
 - [ ] v0.1.0 — PyPI stable release
+- [x] v0.1.1 — Client-side secret leak detection (e.g., `NEXT_PUBLIC_`, `VITE_` prefixing sensitive keys)
+- [x] v0.1.2 — Platform token detection (Vercel, Railway, Cloudflare API tokens)
+- [x] v0.1.3 — Supabase security scanner (`service_role` leak, lack of RLS)
+- [x] v0.1.4 — Insecure vibe-coding defaults (e.g., `Access-Control-Allow-Origin: *`, `console.log(process.env)`)
 
 ## Contributing
 

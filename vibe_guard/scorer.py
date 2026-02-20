@@ -1,5 +1,5 @@
 from typing import List
-from .rules.hardcoded import Finding
+from .models import Finding
 
 def calculate_vibe_score(findings: List[Finding]) -> int:
     penalty = 0

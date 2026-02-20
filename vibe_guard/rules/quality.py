@@ -1,7 +1,8 @@
 import re
 from pathlib import Path
 from typing import List
-from .hardcoded import Finding
+from ..models import Finding
+from .common import should_ignore
 
 def scan_file(filepath: str) -> List[Finding]:
     findings = []
@@ -16,41 +17,43 @@ def scan_file(filepath: str) -> List[Finding]:
     print_count = 0
     
     for i, line in enumerate(lines, 1):
-        if "# vibe-ignore" in line:
-            continue
         stripped = line.strip()
         
         # Silent exception
         if re.match(r'except\s*(Exception|:|\w+Error)?\s*:', stripped):
-            next_lines = [lines[j].strip() for j in range(i, min(i+2, total))]
-            if any(l in ('pass', '') for l in next_lines):
-                findings.append(Finding(
-                    rule_id="silent_exception",
-                    severity="warning",
-                    filename=filepath,
-                    line_number=i,
-                    line_content=stripped[:100],
-                    description="Silent exception - errors are swallowed silently"
-                ))
+            if not should_ignore(line, "silent_exception"):
+                next_lines = [lines[j].strip() for j in range(i, min(i+2, total))]
+                if any(l in ('pass', '') for l in next_lines):
+                    findings.append(Finding(
+                        rule_id="silent_exception",
+                        severity="warning",
+                        filename=filepath,
+                        line_number=i,
+                        line_content=stripped[:100],
+                        description="Silent exception - errors are swallowed silently"
+                    ))
         
         # TODO/FIXME tracking
         if re.search(r'\b(TODO|FIXME|HACK|XXX)\b', line, re.IGNORECASE):
-            todo_count += 1
+            if not should_ignore(line, "high_todo_ratio"):
+                todo_count += 1
         
         # print() in non-test files
         if re.match(r'\s*print\s*\(', line) and 'test' not in filepath.lower():
-            print_count += 1
+            if not should_ignore(line, "excessive_print"):
+                print_count += 1
         
         # Hardcoded localhost
         if re.search(r'["\']https?://(?:localhost|127\.0\.0\.1)', line):
-            findings.append(Finding(
-                rule_id="hardcoded_localhost",
-                severity="info",
-                filename=filepath,
-                line_number=i,
-                line_content=stripped[:100],
-                description="Hardcoded localhost URL - use config/env var"
-            ))
+            if not should_ignore(line, "hardcoded_localhost"):
+                findings.append(Finding(
+                    rule_id="hardcoded_localhost",
+                    severity="info",
+                    filename=filepath,
+                    line_number=i,
+                    line_content=stripped[:100],
+                    description="Hardcoded localhost URL - use config/env var"
+                ))
     
     if total > 0 and todo_count / total > 0.05:
         findings.append(Finding(

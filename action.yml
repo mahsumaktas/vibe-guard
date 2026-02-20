@@ -1,0 +1,57 @@
+name: 'Vibe-Guard Scan'
+description: 'Security scanner for AI-generated (vibe-coded) code. Detects hardcoded secrets, SQLi, RCE, and more.'
+author: 'mahsumaktas'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  path:
+    description: 'Path to scan (defaults to .)'
+    required: false
+    default: '.'
+  fail-on:
+    description: 'Fail the action on specific severity or higher (e.g. "critical", "warning", "info" or "any"). If empty, it only reports.'
+    required: false
+    default: 'critical'
+  comment-pr:
+    description: 'Automatically comment the markdown report on the Pull Request'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: Install vibe-guard
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install vibe-guard
+
+    - name: Run vibe-guard scan
+      id: scan
+      shell: bash
+      run: |
+        vibe-guard scan ${{ inputs.path }} --output vibe-guard-report.md
+        
+        # Check fail conditions (pseudo-logic, simplified for composite action)
+        if [ "${{ inputs.fail-on }}" != "" ]; then
+          if grep -q "🔴 CRITICAL" vibe-guard-report.md && [ "${{ inputs.fail-on }}" == "critical" ]; then
+            echo "Critical issues found!"
+            exit 1
+          fi
+          # Add warning/info conditions as needed
+        fi
+
+    - name: Comment PR
+      if: ${{ inputs.comment-pr == 'true' && github.event_name == 'pull_request' }}
+      uses: thollander/actions-comment-pull-request@v2
+      with:
+        filePath: vibe-guard-report.md
+        comment_tag: vibe-guard-report
