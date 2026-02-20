@@ -1,7 +1,7 @@
 import click
 import os
 from pathlib import Path
-from .rules import hardcoded, rce, sqli, quality, frontend_secrets, insecure_defaults, supabase
+from .rules import hardcoded, rce, sqli, quality, frontend_secrets, insecure_defaults, supabase, infra, auth
 from .scorer import calculate_vibe_score, score_label, score_emoji
 from .reporter import generate_markdown_report
 
@@ -24,6 +24,8 @@ def collect_findings(path: str):
     findings.extend(frontend_secrets.scan_directory(path))
     findings.extend(insecure_defaults.scan_directory(path))
     findings.extend(supabase.scan_directory(path))
+    findings.extend(infra.scan_directory(path))
+    findings.extend(auth.scan_directory(path))
     return findings
 
 @click.group()

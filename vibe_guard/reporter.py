@@ -16,6 +16,9 @@ FIX_HINTS = {
     "frontend_secret_leak": "Remove the public prefix (e.g. NEXT_PUBLIC_) so it's not bundled in the client code",
     "insecure_default": "Fix the insecure shortcut (e.g. restrict CORS, remove verify=False, don't log process.env)",
     "supabase_misconfig": "Keep service_role safe on backend. Enforce RLS with auth.uid() and WITH CHECK clauses.",
+    "docker_root_user": "Add a 'USER node' or 'USER nonroot' directive before running the app",
+    "infra_misconfig": "Fix the excessive infrastructure permission (e.g. restrict write-all, avoid 0.0.0.0/0)",
+    "auth_misconfig": "Use strong environment secrets and secure cookie flags (HttpOnly, Secure)",
 }
 
 def generate_progress_bar(score: int) -> str:

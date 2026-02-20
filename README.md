@@ -32,6 +32,8 @@ Rapid AI-assisted development ("vibe coding") is incredibly fast but often prior
 - 🕵️‍♂️ **Modern Stack Secrets:** Detects exposed Vercel, Railway, Cloudflare, Supabase, Stripe, GCP, SendGrid, Twilio, and Discord tokens.
 - 🚨 **Frontend Leak Detection:** Catches backend secrets disguised with `NEXT_PUBLIC_`, `VITE_`, or `REACT_APP_` prefixes.
 - ☁️ **Supabase Security:** Flags exposed `service_role` keys and overly permissive RLS policies (`USING (true)`).
+- 🏗️ **Infrastructure as Code (IaC):** Catches Docker containers running as root and overly permissive GitHub Actions (`permissions: write-all`, `pull_request_target`).
+- 🔐 **Authentication Flaws:** Detects weak JWT secrets, `"alg": "none"` vulnerabilities, and missing `HttpOnly`/`Secure` cookie flags.
 - 🔓 **Insecure Defaults:** Identifies dangerous AI shortcuts like `verify=False` and permissive CORS.
 - 💉 **Classic Vulnerabilities:** Detects SQL injection risks and RCE vectors (`eval`, `os.system`, `subprocess(shell=True)`).
 - 🤖 **AI Agent Integration:** Run `vibe-guard init` to create `.cursorrules` / `.windsurfrules` so your AI assistant self-audits its code in the background.
@@ -137,6 +139,7 @@ jobs:
 - [x] **v0.1.3** — Supabase security scanner (`service_role` leaks, RLS checks)
 - [x] **v0.1.4** — Insecure vibe-coding defaults (CORS, `verify=False`)
 - [x] **v0.1.5** — `vibe-guard init` for AI agent `.cursorrules` self-auditing
+- [x] **v0.1.6** — Infrastructure (Docker, CI/CD) and Modern Auth (JWT, NextAuth) checks
 - [x] GitHub Action + PR comment integration
 - [ ] PyPI stable release (v1.0.0)
 
